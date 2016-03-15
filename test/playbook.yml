@@ -1,0 +1,9 @@
+---
+
+- hosts: remote_test
+  vars:
+    jumpcloud_api_key: "{{ lookup('env', 'JUMPCLOUD_X_API_KEY') }}"
+  roles:
+    - { role: '../../' }
+
+...

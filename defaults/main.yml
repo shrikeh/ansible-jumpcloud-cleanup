@@ -1,0 +1,7 @@
+---
+jumpcloud_config_file: /opt/jc/jcagent.conf
+jumpcloud_system_search_filter:
+  and:
+    hostname: "{{ ansible_hostname }}"
+    os: "{{ ansible_distribution }}"
+...

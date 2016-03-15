@@ -1,0 +1,45 @@
+---
+- name: Stat the config file
+  stat:
+    path: "{{ jumpcloud_config_file }}"
+  register: jumpcloud_config_file_stat
+
+- name: Parse JumpCloud config file
+  shell: cat "{{ jumpcloud_config_file }}"
+  when: jumpcloud_config_file_stat.stat.exists
+  register: jumpcloud_config_raw
+
+- set_fact:
+    jumpcloud_host_config: "{{ jumpcloud_config_raw.stdout | from_json }}"
+  when: jumpcloud_config_file_stat.stat.exists
+
+- uri:
+    HEADER_x-api-key: "{{ jumpcloud_api_key | mandatory }}"
+    url: "https://console.jumpcloud.com/api/search/systems/"
+    body_format: json
+    body:
+      filter: "{{ jumpcloud_system_search_filter }}"
+    method: POST
+  delegate_to: localhost
+  become: no
+  register: jumpcloud_api_system_search_response
+
+# - debug:
+#     var: jumpcloud_api_response.json.results
+
+- name: Test that a result is returned for the ID
+  set_fact:
+    jumpcloud_system_registered: yes
+  with_items: "{{ jumpcloud_api_system_search_response.json.results }}"
+  when: item.id == jumpcloud_host_config.systemKey
+
+- name: Remove the other results
+  uri:
+    HEADER_x-api-key: "{{ jumpcloud_api_key | mandatory }}"
+    url: "https://console.jumpcloud.com/api/systems/{{ item.id }}"
+    method: DELETE
+  register: jumpcloud_api_system_clear_response
+  with_items: "{{ jumpcloud_api_system_search_response.json.results }}"
+  delegate_to: localhost
+  become: no
+  when: jumpcloud_system_registered and item.id != jumpcloud_host_config.systemKey
